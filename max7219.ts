@@ -2,7 +2,7 @@
  * Pick some fruit and peel it.
  */
 //% weight=100 icon="\uf1db" color=#EC7505
-namespace pmbmax7219 {
+namespace max7219led64 {
 
     /**
      * Turn on a led at specific position. 
