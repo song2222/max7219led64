@@ -5,10 +5,18 @@
 namespace pmbmax7219 {
 
     /**
-     * xxxxxxx
+     * Turn on a led at specific position. 
      */
-    //% blockId=xxx block="turn on Led at x:%x|y:%y"
+    //% blockId=“turnOnLed” block="turn on Led at x:%x|y:%y"
     export function turnOnLed(x:number, y:number) {
+        led.plot(0, 0)
+    }
 
+    /**
+     * Turn off a led at specific position. 
+     */
+    //% blockId=“turnOffLed” block="turn off Led at x:%x|y:%y"
+    export function turnOffLed(x:number, y:number) {
+        led.unplot(0, 0)
     }
 }
