@@ -9,7 +9,7 @@ namespace max7219led64 {
      */
     //% blockId=“turnOnLed” block="turn on Led at x:%x|y:%y"
     export function turnOnLed(x:number, y:number) {
-        led.plot(0, 0)
+        led.plot(x, y)
     }
 
     /**
@@ -17,6 +17,6 @@ namespace max7219led64 {
      */
     //% blockId=“turnOffLed” block="turn off Led at x:%x|y:%y"
     export function turnOffLed(x:number, y:number) {
-        led.unplot(0, 0)
+        led.unplot(x, y)
     }
 }
