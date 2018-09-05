@@ -1,5 +1,5 @@
 /**
- * Pick some fruit and peel it.
+ * A driver for MAX7219 with a 8x8 Martix LEDs in MakeCode.
  */
 //% weight=100 icon="\uf1db" color=#EC7505
 namespace max7219led64 {
