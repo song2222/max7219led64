@@ -19,8 +19,8 @@ enum FlashSpeed {
 //% weight=100 icon="\uf1db" color=#EC7505
 namespace max7219led64 {
 
-    let _maxX = 4;
-    let _maxY = 4;
+    // 定义有几块横向级联的8x8点阵屏 最少1块
+    let _ledMatrixCnt = 1;
 
     let _ledMap : number[] = [0,0,0,0,0,0,0,0];
 
@@ -141,11 +141,22 @@ namespace max7219led64 {
     /**
      * Init the max7219. 
      */
-    //% blockId=init block="Init MAX7219 with Intensity %intensity"
+    //% blockId=init block="Init MAX7219 pin DIN %pinDIO|pin CLK %pinCLK|pin LOAD %pinLOAD|with brightness %intensity"
+    //% pinDIO.defl=DigitalPin.P0
+    //% pinCLK.defl=DigitalPin.P1
+    //% pinLOAD.defl=DigitalPin.P2
     //% intensity.min=0 intensity.max=15 intensity.defl=7
     //% weight=100
-    export function init(intensity : number)
+    export function init(
+        pinDIO : DigitalPin,
+        pinCLK : DigitalPin,
+        pinLOAD: DigitalPin,
+        intensity : number)
     {
+        _DIO = pinDIO;	    // 串行数据输入
+        _SCLK = pinCLK;	    // 串行数据时钟信号————上升沿有效
+        _LOAD = pinLOAD;	// 锁存信号——上升沿有效
+
         setDecodeMode(DECODE_MODE_ALL_NOT_USE);			// 数码管7－0全部不采用译码模式
         setIntensity(intensity);						// 亮度(0-15)
         setScanLimit(7);								// 扫描显示位数(0-7)
@@ -178,17 +189,19 @@ namespace max7219led64 {
     }
 
     function turnOnAllLeds() {
-        for (let x = 0; x <= _maxX; x++) {
-            for (let y = 0; y <= _maxY; y++) {
-                led.plot(x, y);
+        // 目前只考虑了横向多个级联的情况所以默认点阵高度只有8
+        for (let row = 0; row < 8; row++) {
+            for (let matrixIdx = 0; matrixIdx < _ledMatrixCnt ; matrixIdx++) {
+                setRowData(row, 0xff);
             }
         }
     }
 
     function turnOffAllLeds() {
-        for (let x = 0; x <= _maxX; x++) {
-            for (let y = 0; y <= _maxY; y++) {
-                led.unplot(x, y);
+        // 目前只考虑了横向多个级联的情况所以默认点阵高度只有8
+        for (let row = 0; row < 8; row++) {
+            for (let matrixIdx = 0; matrixIdx < _ledMatrixCnt ; matrixIdx++) {
+                setRowData(row, 0x00);
             }
         }
     }
