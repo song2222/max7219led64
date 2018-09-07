@@ -163,11 +163,7 @@ namespace max7219led64 {
         setShutdownMode(SHUTDOWN_MODE_NORMAL);			// 正常运行模式
         setDisplayTestMode(DISPLAY_TEST_MODE_NORMAL);	// 正常运行模式
 
-        _ledMap = [0,0,0,0,0,0,0,0];
-
-        for (let row = 0; row < _ledMap.length; row++) {
-            setRowData(row, _ledMap[row]);
-        }
+        clearScreen();
     }
 
     /** 
@@ -188,33 +184,27 @@ namespace max7219led64 {
         load();
     }
 
-    function turnOnAllLeds() {
-        // 目前只考虑了横向多个级联的情况所以默认点阵高度只有8
-        for (let row = 0; row < 8; row++) {
-            for (let matrixIdx = 0; matrixIdx < _ledMatrixCnt ; matrixIdx++) {
-                setRowData(row, 0xff);
-            }
-        }
+    function fillScreen() {
+        _ledMap = [0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff];
+        _refreshScreen();
     }
 
-    function turnOffAllLeds() {
-        // 目前只考虑了横向多个级联的情况所以默认点阵高度只有8
-        for (let row = 0; row < 8; row++) {
-            for (let matrixIdx = 0; matrixIdx < _ledMatrixCnt ; matrixIdx++) {
-                setRowData(row, 0x00);
-            }
-        }
+    //% blockId=clearScreen block="clear screen"
+    //% weight=10
+    export function clearScreen() {
+        _ledMap = [0,0,0,0,0,0,0,0];
+        _refreshScreen();
     }
 
     /**
      * Turn on a led at specific position. 
      */
-    //% blockId=“turnOnLed” block="turn on Led at x:%x|y:%y"
+    //% blockId=“turnOnLed” block="turn on Led at row:%y|col:%x"
     //% x.min=0 x.max=7 y.min=0 y.max=7
-    export function turnOnLed(x:number, y:number) {
+    export function turnOnLed(y:number, x:number) {
         let rowData = _ledMap[y];
 
-        rowData = (0x01<<x) | rowData;
+        rowData = (0x01 << (_ledMatrixCnt*7 - x) ) | rowData;
         _ledMap[y] = rowData;
 
         setRowData(y, rowData);
@@ -223,16 +213,16 @@ namespace max7219led64 {
     /**
      * Turn off a led at specific position. 
      */
-    //% blockId=“turnOffLed” block="turn off Led at x:%x|y:%y"
+    //% blockId=“turnOffLed” block="turn off Led at row:%y|col:%x"
     //% x.min=0 x.max=7 y.min=0 y.max=7
-    export function turnOffLed(x:number, y:number) {
+    export function turnOffLed(y:number, x:number) {
         let rowData = _ledMap[y];
 
         // 将指定位置0，采取的方法是先跟(0x01<<x)进行或操作将指定位置1
         // 然后再跟(0x01<<x)进行异或操作，从而将指定位置0.
         // 异或操作的意义是，0跟任何数异或等于任何数，1跟任何数异或等于取反。
-        rowData = (0x01<<x)^((0x01<<x)|rowData);
-        _ledMap[y] = rowData;
+        rowData = ((0x01 << (_ledMatrixCnt*7 - x) ) | rowData) ^ (0x01 << (_ledMatrixCnt*7 - x));
+        _ledMap[y] = rowData; 
 
         setRowData(y, rowData);
     }
@@ -244,10 +234,16 @@ namespace max7219led64 {
     export function flashAllLed(times:number, speed:FlashSpeed) {
 
         for (let index = 0; index < times; index++) {
-            turnOnAllLeds();
+            fillScreen();
             basic.pause(speed);
-            turnOffAllLeds();
+            clearScreen();
             basic.pause(speed);
+        }
+    }
+
+    function _refreshScreen() {
+        for (let row = 0; row < _ledMap.length; row++) {
+            setRowData(row, _ledMap[row]);
         }
     }
 }
