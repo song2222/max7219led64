@@ -204,7 +204,7 @@ namespace max7219led64 {
     export function turnOnLed(y:number, x:number) {
         let rowData = _ledMap[y];
 
-        rowData = (0x01 << (_ledMatrixCnt*7 - x) ) | rowData;
+        rowData = (0x01 << (_ledMatrixCnt*8 - x - 1) ) | rowData;
         _ledMap[y] = rowData;
 
         setRowData(y, rowData);
@@ -221,7 +221,7 @@ namespace max7219led64 {
         // 将指定位置0，采取的方法是先跟(0x01<<x)进行或操作将指定位置1
         // 然后再跟(0x01<<x)进行异或操作，从而将指定位置0.
         // 异或操作的意义是，0跟任何数异或等于任何数，1跟任何数异或等于取反。
-        rowData = ((0x01 << (_ledMatrixCnt*7 - x) ) | rowData) ^ (0x01 << (_ledMatrixCnt*7 - x));
+        rowData = ((0x01 << (_ledMatrixCnt*8 - x - 1) ) | rowData) ^ (0x01 << (_ledMatrixCnt*8 - x - 1));
         _ledMap[y] = rowData; 
 
         setRowData(y, rowData);
