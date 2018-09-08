@@ -20,7 +20,10 @@ enum FlashSpeed {
 namespace max7219led64 {
 
     // 定义有几块横向级联的8x8点阵屏 最少1块
-    let _ledMatrixCnt = 1;
+    let myNumberOfDevices = 1;
+    export function getMyNumberOfDevices() : number {
+        return myNumberOfDevices;
+    }
 
     let _ledMap : number[] = [0,0,0,0,0,0,0,0];
 
@@ -34,13 +37,13 @@ namespace max7219led64 {
         pins.digitalWritePin(_SCLK, 1);
     }
 
-    function load(){
+    function commit(){
         pins.digitalWritePin(_LOAD, 1);
         pins.digitalWritePin(_LOAD, 0);
     }
 
     // 传输一个8位数
-    function setByte(byteData : number){
+    function sendByte(byteData : number){
         for (let i = 0; i < 8; i++)
         {
             // 传入的数字从高位到低位依次判断是否为1，若为1则设置高电平，否则设置低电平
@@ -54,6 +57,33 @@ namespace max7219led64 {
         }
     }
 
+    // 给级联的设备中指定某一块设备发送命令和数据，不进行提交(load)
+    // devicde: from 0
+    export function sendCommandDataToDiviceWithoutCommit (device:number, reg:number, data:number) {
+        for(let i=0;i<myNumberOfDevices;i++) {
+            if (i==device) {
+                sendByte(reg);
+                sendByte(data);
+            } else {
+                // 如果不是指定的device则传16位的空数据
+                // 注意，由于所有设备的移位寄存器都是连在一起的，
+                // 所以必须传一组空数据过去占位
+                sendByte(0x00);
+                sendByte(0x00);
+            }
+        }
+    }
+
+    // 给级联的所有设备传同样的命令和数据，并提交（load）
+    // 用于统一设置亮度等共通的设置
+    export function sendAllDiviceWithCommit (reg:number, data:number) {
+        for(let i=0;i<myNumberOfDevices;i++) {
+            sendByte(reg);
+            sendByte(data);
+        }
+        commit();
+    }
+
     // 译码模式设置
     const DECODE_MODE_ALL_NOT_USE = 0x00;	// 所有数码管均不使用译码功能
     const DECODE_MODE_DIG0_ONLY	  = 0x01; 	// 只对DIG0号数码管进行译码，其他数码管不使用译码功能
@@ -63,9 +93,7 @@ namespace max7219led64 {
         // 指令寄存器地址设置：0xX9
         // D15-D12:任意
         // D11,10,9,8: 1,0,0,1
-        setByte(0x09);
-        setByte(mode);
-        load();
+        sendAllDiviceWithCommit(0x09, mode);
     }
 
     /**
@@ -74,32 +102,26 @@ namespace max7219led64 {
     //% blockId=setIntensity block="Set brightness %mode"
     //% mode.min=0 mode.max=15 mode.defl=7
     //% weight=99
-    export function setIntensity(mode : number) {
+    export function setIntensity(intensity : number) {
         // 指令寄存器地址设置：0xXA
         // D15-D12:任意
         // D11,10,9,8: 1,0,1,0
-        setByte(0x0A);
-        
+        // 
         // 亮度从0到15共16个等级，指令的D3－D0就是数字0－15的二进制编码
         // D7-D4:任意
-        setByte(mode);
-
-        load();
+        sendAllDiviceWithCommit(0x0A, intensity);
     }
         
     // 扫描显示位数设置(0-7)
-    function setScanLimit(mode : number) {
+    function setScanLimit(scanLimit : number) {
         // 指令寄存器地址设置：0xXB
         // D15-D12:任意
         // D11,10,9,8: 1,0,1,1
-        setByte(0x0B);
-        
+        //
         // 扫描位数可设置0－7共8种选择，指令的D2－D0就是数字0－7的二进制编码
         // D7-D3:任意
         // D2-D0:0-7的3位二进制编码
-        setByte(mode);
-
-        load();
+        sendAllDiviceWithCommit(0x0B, scanLimit);
     }
 
     // 关断模式设置
@@ -110,14 +132,11 @@ namespace max7219led64 {
         // 指令寄存器地址设置：0xXC
         // D15-D12:任意
         // D11,10,9,8: 1,1,0,0
-        setByte(0x0C);
-        
+        //
         // 关断模式可设置0－1共2种选择，设置D0即可
         // D7-D1:任意
         // D0:1: 正常运行模式 0: 关断模式
-        setByte(mode);
-
-        load();
+        sendAllDiviceWithCommit(0x0C, mode);
     }
 
     // 测试模式设置
@@ -128,34 +147,35 @@ namespace max7219led64 {
         // 指令寄存器地址设置：0xXF
         // D15-D12:任意
         // D11,10,9,8: 1,1,1,1
-        setByte(0x0f);
-        
+        //
         // 测试模式可设置0－1共2种选择，设置D0即可
         // D7-D1:任意
         // D0:0: 正常运行模式 1: 测试模式(全亮模式)
-        setByte(mode);
-
-        load();
+        sendAllDiviceWithCommit(0x0F, mode);
     }
 
     /**
      * Init the max7219. 
      */
-    //% blockId=init block="Init MAX7219 pin DIN %pinDIO|pin CLK %pinCLK|pin LOAD %pinLOAD|with brightness %intensity"
+    //% blockId=init block="Init MAX7219 pin DIN %pinDIO|pin CLK %pinCLK|pin LOAD %pinLOAD|num of matrix? %numberOfDevices|with brightness %intensity"
     //% pinDIO.defl=DigitalPin.P0
     //% pinCLK.defl=DigitalPin.P1
     //% pinLOAD.defl=DigitalPin.P2
+    //% numberOfDevices.defl=1
     //% intensity.min=0 intensity.max=15 intensity.defl=7
     //% weight=100
     export function init(
         pinDIO : DigitalPin,
         pinCLK : DigitalPin,
         pinLOAD: DigitalPin,
+        numberOfDevices: number,
         intensity : number)
     {
         _DIO = pinDIO;	    // 串行数据输入
         _SCLK = pinCLK;	    // 串行数据时钟信号————上升沿有效
         _LOAD = pinLOAD;	// 锁存信号——上升沿有效
+
+        myNumberOfDevices = numberOfDevices;
 
         setDecodeMode(DECODE_MODE_ALL_NOT_USE);			// 数码管7－0全部不采用译码模式
         setIntensity(intensity);						// 亮度(0-15)
@@ -176,12 +196,12 @@ namespace max7219led64 {
         // 设置指令寄存器地址：0xX1-0xX8
         // 格式：D15-D12:任意（我们这里设置0）
         //       D11-D8: 1-8的4位二进制编码：例：1（0,0,0,1）
-        setByte(row+1);
+        sendByte(row+1);
 
         // 设置显示内容
-        setByte(rowData);
+        sendByte(rowData);
 
-        load();
+        commit();
     }
 
     function fillScreen() {
@@ -204,7 +224,7 @@ namespace max7219led64 {
     export function turnOnLed(y:number, x:number) {
         let rowData = _ledMap[y];
 
-        rowData = (0x01 << (_ledMatrixCnt*8 - x - 1) ) | rowData;
+        rowData = (0x01 << (myNumberOfDevices*8 - x - 1) ) | rowData;
         _ledMap[y] = rowData;
 
         setRowData(y, rowData);
@@ -221,7 +241,7 @@ namespace max7219led64 {
         // 将指定位置0，采取的方法是先跟(0x01<<x)进行或操作将指定位置1
         // 然后再跟(0x01<<x)进行异或操作，从而将指定位置0.
         // 异或操作的意义是，0跟任何数异或等于任何数，1跟任何数异或等于取反。
-        rowData = ((0x01 << (_ledMatrixCnt*8 - x - 1) ) | rowData) ^ (0x01 << (_ledMatrixCnt*8 - x - 1));
+        rowData = ((0x01 << (myNumberOfDevices*8 - x - 1) ) | rowData) ^ (0x01 << (myNumberOfDevices*8 - x - 1));
         _ledMap[y] = rowData; 
 
         setRowData(y, rowData);
