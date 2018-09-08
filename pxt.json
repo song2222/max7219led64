@@ -3,7 +3,9 @@
     "description": "A driver for MAX7219 with a 8x8 Martix LEDs in MakeCode.",
     "icon": "./static/libs/max7219.png",
     "files": [
-        "max7219.ts"
+        "max7219.ts",
+        "text.ts",
+        "cp437font.ts"
     ],
     "dependencies": {
         "core": "file:../core"

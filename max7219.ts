@@ -250,7 +250,7 @@ namespace max7219led64 {
             //serial.writeValue("x col", x);
 
             // 将指定位置1
-            _ledDatas[idx] = (0x01 << (7 - (x%8)) ) | _ledDatas[idx];
+            _ledDatas[idx] = setBitInByte(_ledDatas[idx], 7 - (x%8));
 
             // 更新屏幕(y+1是因为max7219更新数据的行号是1-8 而不是0-7)
             sendDiviceCommit(x/8, y+1, _ledDatas[idx]);
@@ -268,10 +268,8 @@ namespace max7219led64 {
         if (y<8 && y>=0 && x<myNumberOfDevices*8 && x>=0) {
             // 根据坐标确定要修改数组第几个元素
             let idx = y*myNumberOfDevices + x/8;
-            // 将指定位置0，采取的方法是先跟(0x01<<x)进行或操作将指定位置1
-            // 然后再跟(0x01<<x)进行异或操作，从而将指定位置0.
-            // 异或操作的意义是，0跟任何数异或等于任何数，1跟任何数异或等于取反。
-            _ledDatas[idx] = ((0x01 << (7 - (x%8)) ) | _ledDatas[idx]) ^ (0x01 << (7 - (x%8)));
+            // 将指定位置0
+            _ledDatas[idx] = cleanBitInByte(_ledDatas[idx], 7 - (x%8));
 
             // 更新屏幕(y+1是因为max7219更新数据的行号是1-8 而不是0-7)
             sendDiviceCommit(x/8, y+1, _ledDatas[idx]);
@@ -318,5 +316,30 @@ namespace max7219led64 {
      */
     function _getRowNoByArrIdx(idxOfDataArray : number) : number{
         return idxOfDataArray/myNumberOfDevices;
+    }
+
+    export function setLedData(idx:number, data:number){
+        _ledDatas[idx] = data;
+    }
+
+    export function getLedData(idx:number):number{
+        return _ledDatas[idx];
+    }
+
+    /** 
+     * 将指定位置1
+    */
+    export function setBitInByte(byteData:number, pos:number) : number{
+        return (0x01 << pos ) | byteData;
+    }
+
+    /** 
+     * 将指定位置0
+     * 采取的方法是先跟(0x01<<pos)进行或操作将指定位置1
+     * 然后再跟(0x01<<pos)进行异或操作，从而将指定位置0.
+     * 异或操作的意义是，0跟任何数异或等于任何数，1跟任何数异或等于取反。
+    */
+    export function cleanBitInByte(byteData:number, pos:number) : number{
+        return ((0x01 << pos ) | byteData) ^ (0x01 << pos);
     }
 }
