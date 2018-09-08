@@ -19,17 +19,25 @@ enum FlashSpeed {
 //% weight=100 icon="\uf1db" color=#EC7505
 namespace max7219led64 {
 
-    // 定义有几块横向级联的8x8点阵屏 最少1块
+    /** 定义有几块横向级联的8x8点阵屏 最少1块 */
     let myNumberOfDevices = 1;
     export function getMyNumberOfDevices() : number {
         return myNumberOfDevices;
     }
 
-    let _ledMap : number[] = [0,0,0,0,0,0,0,0];
+    // 定义点阵数组，每一个元素都是代表一个8位的数据（行单位）
+    // 对应硬件的点阵顺序是从左到右从上到下
+    // 比如有两个级联的点阵屏的时候，这个数组会被初始化成16个元素】
+    // 第1个数是第1个点阵屏的第1行数据，第2个数据是第2个点阵屏第1行数据
+    // 第3个数据是第1个点阵屏的第2行数据
+    let _ledDatas : number[] = [];
 
-    let _DIO = DigitalPin.P0;	// 串行数据输入
-    let _SCLK = DigitalPin.P1;	// 串行数据时钟信号————上升沿有效
-    let _LOAD = DigitalPin.P2;	// 锁存信号——上升沿有效
+    /** 串行数据输入 */
+    let _DIO = DigitalPin.P0;
+    /** 串行数据时钟信号————上升沿有效 */
+    let _SCLK = DigitalPin.P1;
+    /** 锁存信号——上升沿有效 */
+    let _LOAD = DigitalPin.P2;
 
     function setBitData(bitData : number){
         pins.digitalWritePin(_SCLK, 0);
@@ -57,9 +65,13 @@ namespace max7219led64 {
         }
     }
 
-    // 给级联的设备中指定某一块设备发送命令和数据，不进行提交(load)
-    // devicde: from 0
-    export function sendCommandDataToDiviceWithoutCommit (device:number, reg:number, data:number) {
+    /** 
+     * 给指定设备发送命令和数据，并提交（load）
+     * @param devicde max7219设备编号 从0开始
+     * @param reg 寄存器地址
+     * @param data 数据
+    */
+    export function sendDiviceCommit (device:number, reg:number, data:number) {
         for(let i=0;i<myNumberOfDevices;i++) {
             if (i==device) {
                 sendByte(reg);
@@ -72,16 +84,32 @@ namespace max7219led64 {
                 sendByte(0x00);
             }
         }
+        commit();
     }
 
-    // 给级联的所有设备传同样的命令和数据，并提交（load）
-    // 用于统一设置亮度等共通的设置
-    export function sendAllDiviceWithCommit (reg:number, data:number) {
+    /** 
+     * 给级联的所有设备传同样的命令和数据，并提交（load）
+     * 用于统一设置亮度等共通的设置
+     * @param reg 寄存器地址
+     * @param data 数据
+    */
+    export function sendAllDiviceCommit (reg:number, data:number) {
         for(let i=0;i<myNumberOfDevices;i++) {
             sendByte(reg);
             sendByte(data);
         }
         commit();
+    }
+
+    /** 
+     * 传送指定行的数据，不提交（load）
+     * 用于多块级联时，将所有数据全部送完以后统一提交一次(提交动作由调用方实行)
+     * @param rowIdx 行idx（从0开始）
+     * @param data 数据
+    */
+    function sendDisplayDataNoCommit (rowIdx:number, data:number) {
+        sendByte(rowIdx + 1); //加1是因为max7219的各行点阵数据的寄存器地址是1-8而不是0-7
+        sendByte(data);
     }
 
     // 译码模式设置
@@ -93,7 +121,7 @@ namespace max7219led64 {
         // 指令寄存器地址设置：0xX9
         // D15-D12:任意
         // D11,10,9,8: 1,0,0,1
-        sendAllDiviceWithCommit(0x09, mode);
+        sendAllDiviceCommit(0x09, mode);
     }
 
     /**
@@ -109,7 +137,7 @@ namespace max7219led64 {
         // 
         // 亮度从0到15共16个等级，指令的D3－D0就是数字0－15的二进制编码
         // D7-D4:任意
-        sendAllDiviceWithCommit(0x0A, intensity);
+        sendAllDiviceCommit(0x0A, intensity);
     }
         
     // 扫描显示位数设置(0-7)
@@ -121,7 +149,7 @@ namespace max7219led64 {
         // 扫描位数可设置0－7共8种选择，指令的D2－D0就是数字0－7的二进制编码
         // D7-D3:任意
         // D2-D0:0-7的3位二进制编码
-        sendAllDiviceWithCommit(0x0B, scanLimit);
+        sendAllDiviceCommit(0x0B, scanLimit);
     }
 
     // 关断模式设置
@@ -136,7 +164,7 @@ namespace max7219led64 {
         // 关断模式可设置0－1共2种选择，设置D0即可
         // D7-D1:任意
         // D0:1: 正常运行模式 0: 关断模式
-        sendAllDiviceWithCommit(0x0C, mode);
+        sendAllDiviceCommit(0x0C, mode);
     }
 
     // 测试模式设置
@@ -151,7 +179,7 @@ namespace max7219led64 {
         // 测试模式可设置0－1共2种选择，设置D0即可
         // D7-D1:任意
         // D0:0: 正常运行模式 1: 测试模式(全亮模式)
-        sendAllDiviceWithCommit(0x0F, mode);
+        sendAllDiviceCommit(0x0F, mode);
     }
 
     /**
@@ -177,6 +205,10 @@ namespace max7219led64 {
 
         myNumberOfDevices = numberOfDevices;
 
+        for (let index = 0; index < myNumberOfDevices; index++) {
+            _ledDatas.push(0x00);
+        }
+
         setDecodeMode(DECODE_MODE_ALL_NOT_USE);			// 数码管7－0全部不采用译码模式
         setIntensity(intensity);						// 亮度(0-15)
         setScanLimit(7);								// 扫描显示位数(0-7)
@@ -186,48 +218,43 @@ namespace max7219led64 {
         clearScreen();
     }
 
-    /** 
-     * 指定行显示指定内容
-     * @param row 行号 0-7
-     * @param rowData 一个字节的8位数据也就是数字0-255之间的数
-    */
-    function setRowData(row : number, rowData : number) {
-
-        // 设置指令寄存器地址：0xX1-0xX8
-        // 格式：D15-D12:任意（我们这里设置0）
-        //       D11-D8: 1-8的4位二进制编码：例：1（0,0,0,1）
-        sendByte(row+1);
-
-        // 设置显示内容
-        sendByte(rowData);
-
-        commit();
-    }
-
     function fillScreen() {
-        _ledMap = [0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff];
-        _refreshScreen();
+        for (let index = 0; index < myNumberOfDevices * 8; index++) {
+            _ledDatas[index]=0xff;
+        }
+        _refreshAllScreen();
     }
 
     //% blockId=clearScreen block="clear screen"
     //% weight=10
     export function clearScreen() {
-        _ledMap = [0,0,0,0,0,0,0,0];
-        _refreshScreen();
+        for (let index = 0; index < myNumberOfDevices * 8; index++) {
+            _ledDatas[index]=0x00;
+        }
+        _refreshAllScreen();
     }
 
     /**
      * Turn on a led at specific position. 
      */
     //% blockId=“turnOnLed” block="turn on Led at row:%y|col:%x"
-    //% x.min=0 x.max=7 y.min=0 y.max=7
-    export function turnOnLed(y:number, x:number) {
-        let rowData = _ledMap[y];
+    //% x.min=0 y.min=0 y.max=7
+    export function turnOnLed(y:number, x:number) { 
+        // 指定行不能超过8行（index:7）
+        // 指定列不能超过级联后每行最大led个数
+        if (y<8 && y>=0 && x<myNumberOfDevices*8 && x>=0) {
+            // 根据坐标确定要修改数组第几个元素
+            let idx = y*myNumberOfDevices + x/8;
 
-        rowData = (0x01 << (myNumberOfDevices*8 - x - 1) ) | rowData;
-        _ledMap[y] = rowData;
+            //serial.writeValue("y row", y);
+            //serial.writeValue("x col", x);
 
-        setRowData(y, rowData);
+            // 将指定位置1
+            _ledDatas[idx] = (0x01 << (7 - (x%8)) ) | _ledDatas[idx];
+
+            // 更新屏幕(y+1是因为max7219更新数据的行号是1-8 而不是0-7)
+            sendDiviceCommit(x/8, y+1, _ledDatas[idx]);
+        }
     }
 
     /**
@@ -236,15 +263,19 @@ namespace max7219led64 {
     //% blockId=“turnOffLed” block="turn off Led at row:%y|col:%x"
     //% x.min=0 x.max=7 y.min=0 y.max=7
     export function turnOffLed(y:number, x:number) {
-        let rowData = _ledMap[y];
+        // 指定行不能超过8行（index:7）
+        // 指定列不能超过级联后每行最大led个数
+        if (y<8 && y>=0 && x<myNumberOfDevices*8 && x>=0) {
+            // 根据坐标确定要修改数组第几个元素
+            let idx = y*myNumberOfDevices + x/8;
+            // 将指定位置0，采取的方法是先跟(0x01<<x)进行或操作将指定位置1
+            // 然后再跟(0x01<<x)进行异或操作，从而将指定位置0.
+            // 异或操作的意义是，0跟任何数异或等于任何数，1跟任何数异或等于取反。
+            _ledDatas[idx] = ((0x01 << (7 - (x%8)) ) | _ledDatas[idx]) ^ (0x01 << (7 - (x%8)));
 
-        // 将指定位置0，采取的方法是先跟(0x01<<x)进行或操作将指定位置1
-        // 然后再跟(0x01<<x)进行异或操作，从而将指定位置0.
-        // 异或操作的意义是，0跟任何数异或等于任何数，1跟任何数异或等于取反。
-        rowData = ((0x01 << (myNumberOfDevices*8 - x - 1) ) | rowData) ^ (0x01 << (myNumberOfDevices*8 - x - 1));
-        _ledMap[y] = rowData; 
-
-        setRowData(y, rowData);
+            // 更新屏幕(y+1是因为max7219更新数据的行号是1-8 而不是0-7)
+            sendDiviceCommit(x/8, y+1, _ledDatas[idx]);
+        }
     }
 
     /**
@@ -261,9 +292,31 @@ namespace max7219led64 {
         }
     }
 
-    function _refreshScreen() {
-        for (let row = 0; row < _ledMap.length; row++) {
-            setRowData(row, _ledMap[row]);
+    function _refreshAllScreen() {
+        for (let idx = 0; idx < _ledDatas.length; idx++) {
+            sendDisplayDataNoCommit(_getRowNoByArrIdx(idx), _ledDatas[idx]);
+            // 所有级联的设备的一整行数据全部传输完毕以后，统一提交一次
+            if (_getDevNoByArrIdx(idx) == (myNumberOfDevices-1) ) {
+                commit();
+            }
         }
+    }
+
+    /**
+     * 根据数组下标计算设备号
+     * @param idxOfDataArray 点阵数组下标
+     * @returns 设备号(从0开始计数)
+     */
+    function _getDevNoByArrIdx(idxOfDataArray : number) : number{
+        return idxOfDataArray%myNumberOfDevices;
+    }
+
+    /**
+     * 根据数组下标计算点阵行号(从0开始计数)
+     * @param idxOfDataArray 点阵数组下标
+     * @returns 点阵行号(从0开始计数)
+     */
+    function _getRowNoByArrIdx(idxOfDataArray : number) : number{
+        return idxOfDataArray/myNumberOfDevices;
     }
 }
