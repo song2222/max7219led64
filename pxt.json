@@ -5,7 +5,9 @@
     "files": [
         "max7219.ts",
         "text.ts",
-        "cp437font.ts"
+        "cp437font.ts",
+        "icons.ts",
+        "icons.jres"
     ],
     "dependencies": {
         "core": "file:../core"

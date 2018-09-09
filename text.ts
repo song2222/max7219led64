@@ -22,12 +22,10 @@ namespace max7219led64 {
     }
 
     function calculateTextAlignmentOffset() {
-        serial.writeValue("x", 1);
 
         switch(myTextAlignment) {
             case TEXT_ALIGN_LEFT:
                 myTextAlignmentOffset = 0;
-                serial.writeString("2");
                 break;
             case TEXT_ALIGN_LEFT_END:
                 myTextAlignmentOffset = myNumberOfDevices * 8;
@@ -39,10 +37,8 @@ namespace max7219led64 {
                 myTextAlignmentOffset = - (myText.length * myCharWidth);
                 break;
             default:
-                serial.writeString("3");
                 break;
         }
-        serial.writeValue("x", 4);
         
     }
 
