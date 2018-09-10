@@ -1,6 +1,6 @@
 namespace max7219led64 {
     // for now cp437 font char width is 7
-    const myCharWidth = 7;
+    const myCharWidth = 8;
 
     let myText:string = "";
     let myNextText:string = "";
