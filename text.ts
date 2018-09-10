@@ -106,7 +106,10 @@ namespace max7219led64 {
                 position = i * myCharWidth + col + myTextOffset + myTextAlignmentOffset;
                 if (position >= 0 && position < myNumberOfDevices * 8) {
                     // setColumn(position, cp437_font[letter][col]);
-                    setColumn(position, (cp437_font[letter-48][col/4] & 0xff<<((3-(col%4))*8)) >> (3-(col%4))*8 );
+                    // 下面的ascii码减去的数字（cp437_font[letter-n]）是cp437_font字库数组前面被注释掉的数据个数
+                    // 因为microbit的可用内存很少，所以无法导入所有的字库，只能挑一些常用的
+                    // 注意，最开头的部分被注释掉了所以计算时要减去这个位移，另外，途中即使不导入字库也要使用空数组来占位，否则根据ascii码无法取到正确的字体数据
+                    setColumn(position, (cp437_font[letter-32][col/4] & 0xff<<((3-(col%4))*8)) >> (3-(col%4))*8 );
                 }
             }
         }
