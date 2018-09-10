@@ -15,5 +15,9 @@ https://github.com/slipperstree/max7219led64
 
 搜索后就可以添加并使用本软件包了。
 
+## 程序例
+
+![image](https://github.com/slipperstree/max7219led64/blob/master/sample.png)  
+
 ## API
 TODO
