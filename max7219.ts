@@ -233,15 +233,23 @@ namespace max7219led64 {
             _ledDatas.push(0x00);
         }
 
+        // 为了避免上电瞬间的电流干扰，首先设置成关断模式（MAX7219容易受到干扰，会出现各种奇怪的现象）
+        setShutdownMode(ShutdownMode.SHUTDOWN_MODE_SHUTDOWN);
+
+        // 初始化各种设置
         setDecodeMode(DECODE_MODE_ALL_NOT_USE);			// 数码管7－0全部不采用译码模式
         setIntensity(intensity);						// 亮度(0-15)
         setScanLimit(7);								// 扫描显示位数(0-7)
         setDisplayTestMode(TestMode.DISPLAY_TEST_MODE_NORMAL);	// 正常运行模式
-        setShutdownMode(ShutdownMode.SHUTDOWN_MODE_NORMAL);			// 正常运行模式
 
+        // 在退出关断模式之前清一次屏幕
         clearScreen();
+
+        // 所有准备工作就绪，退出关断模式
+        setShutdownMode(ShutdownMode.SHUTDOWN_MODE_NORMAL);			// 正常运行模式
     }
 
+    // 点亮所有点
     function fillScreen() {
         for (let index = 0; index < myNumberOfDevices * 8; index++) {
             _ledDatas[index]=0xff;
@@ -249,6 +257,7 @@ namespace max7219led64 {
         refreshAllScreen();
     }
 
+    // 清屏幕（关闭所有点）
     //% blockId=clearScreen block="clear screen"
     //% weight=10
     export function clearScreen() {
@@ -258,12 +267,14 @@ namespace max7219led64 {
         refreshAllScreen();
     }
 
+    // 清内存（屏幕不更新）
     export function clearMap() {
         for (let index = 0; index < myNumberOfDevices * 8; index++) {
             _ledDatas[index]=0x00;
         }
     }
 
+    // 给内存数据指定行列置1（不刷新屏幕）
     export function turnOnMapNoCommit(row:number, col:number) { 
         // 指定行不能超过8行（index:7）
         // 指定列不能超过级联后每行最大led个数
@@ -275,6 +286,7 @@ namespace max7219led64 {
         }
     }
 
+    // 给内存数据指定行列置0（不刷新屏幕）
     export function turnOffMapNoCommit(row:number, col:number) { 
         // 指定行不能超过8行（index:7）
         // 指定列不能超过级联后每行最大led个数
@@ -391,5 +403,16 @@ namespace max7219led64 {
     */
     export function cleanBitInByte(byteData:number, pos:number) : number{
         return ((0x01 << pos ) | byteData) ^ (0x01 << pos);
+    }
+
+
+    // 仅仅作为测试使用，正式版本不对外公开
+    //% blockId=test block="test"
+    export function test() {
+        sendAllDiviceCommit(6, 0x00);
+        sendAllDiviceCommit(7, 0xff);
+        sendAllDiviceCommit(8, 0x00);
+        basic.showIcon(IconNames.Heart);
+        basic.showIcon(IconNames.SmallHeart);
     }
 }

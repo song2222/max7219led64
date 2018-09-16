@@ -1,6 +1,5 @@
 namespace max7219led64 {
-    // for now cp437 font char width is 7
-    const myCharWidth = 8;
+    const myCharWidth = 7;
 
     let myText:string = "";
     let myNextText:string = "";
@@ -81,12 +80,6 @@ namespace max7219led64 {
                 myTextOffset = myNumberOfDevices * myCharWidth;
             }
         }
-        //myTextOffset = (myTextOffset - 1) % (myText.length * myCharWidth + myNumberOfDevices * 8);
-        // if (myTextOffset == 0 && myNextText.length > 0) {
-        //     myText = myNextText;
-        //     myNextText = "";
-        //     calculateTextAlignmentOffset();
-        // }
     }
     
     function oscillateText() {
@@ -115,9 +108,6 @@ namespace max7219led64 {
 
         let rowData_8bit:number = 0;
 
-        //serial.writeLine(myText);
-
-        //clearScreen();
         clearMap();
 
         for (textIdx = myShowTextStartIdx; textIdx < (myShowTextStartIdx + myNumberOfDevices + 1); textIdx++) {
