@@ -5,7 +5,7 @@
     "files": [
         "max7219.ts",
         "text.ts",
-        "cp437font.ts"
+        "i2c24C256.ts"
     ],
     "dependencies": {
         "core": "file:../core"

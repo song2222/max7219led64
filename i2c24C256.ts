@@ -15,6 +15,7 @@ namespace max7219led64 {
             NumberFormat.Int32BE,
             false
             )
+        // basic.pause(5);
     }
 
     /**
@@ -32,7 +33,8 @@ namespace max7219led64 {
             NumberFormat.UInt16BE,
             true
             )
-            return pins.i2cReadNumber(80, NumberFormat.UInt8BE, false);
+        // basic.pause(5);
+        return pins.i2cReadNumber(80, NumberFormat.UInt8BE, false);
     }
 
     /**
@@ -45,11 +47,12 @@ namespace max7219led64 {
     export function read24C256_Int16(i2cAddr:number, dataAddr:number) : number  {
         // Set data address we want to 'read' by a 'dummy write'.
         pins.i2cWriteNumber(
-            80,
+            i2cAddr,
             dataAddr,
             NumberFormat.UInt16BE,
             true
             )
-            return pins.i2cReadNumber(80, NumberFormat.UInt16BE, false);
+        // basic.pause(5);
+        return pins.i2cReadNumber(i2cAddr, NumberFormat.UInt16BE, false);
     }
 }
