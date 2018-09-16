@@ -21,3 +21,8 @@ https://github.com/slipperstree/max7219led64
 
 ## API
 TODO
+
+## 关于显示字符
+由于micro:bit的内存比较小，无法加载所有点阵字库，所以提供了一个选项允许从外部储存芯片（24CXX）读取点阵字库。
+目前支持24C256和24C128两种I2C协议的EEPROM。
+手头上没有外部芯片的话也可以不开启这个选项（init函数的useExFont参数，默认关闭）
