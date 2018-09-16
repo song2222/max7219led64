@@ -5,6 +5,7 @@ namespace max7219led64 {
     let myText:string = "";
     let myNextText:string = "";
     let myTextOffset:number = 0;
+    let myShowTextStartIdx:number =0;
     let increment:number = -1;
 
     let myTextAlignment:number = 0;
@@ -51,20 +52,17 @@ namespace max7219led64 {
     
     //% blockId=commit block="commit"
     export function commit() {
-        for (let col = 0; col < myNumberOfDevices * 8; col++) {
-            sendDiviceCommit(col / 8, col % 8 + 1, getLedData(col));
-        }
+        refreshAllScreen();
     }
     
     //% blockId=setText block="setText %text"
     export function setText(text:string) {
+
+        //myNumberOfDevices = getMyNumberOfDevices();
+
         myText = text;
         myTextOffset = 0;
         calculateTextAlignmentOffset();
-    }
-    
-    function setNextText(nextText:string) {
-        myNextText = nextText;
     }
     
     function scrollTextRight() {
@@ -73,12 +71,22 @@ namespace max7219led64 {
     
     //% blockId=scrollTextLeft block="scroll text to left"
     export function scrollTextLeft() {
-        myTextOffset = (myTextOffset - 1) % (myText.length * myCharWidth + myNumberOfDevices * 8);
-        if (myTextOffset == 0 && myNextText.length > 0) {
-            myText = myNextText;
-            myNextText = "";
-            calculateTextAlignmentOffset();
+        myTextOffset -= 1;
+        if (myTextOffset <= (-myCharWidth)) {
+            myTextOffset=0;
+
+            myShowTextStartIdx++;
+            if (myShowTextStartIdx >= myText.length) {
+                myShowTextStartIdx = 0;
+                myTextOffset = myNumberOfDevices * myCharWidth;
+            }
         }
+        //myTextOffset = (myTextOffset - 1) % (myText.length * myCharWidth + myNumberOfDevices * 8);
+        // if (myTextOffset == 0 && myNextText.length > 0) {
+        //     myText = myNextText;
+        //     myNextText = "";
+        //     calculateTextAlignmentOffset();
+        // }
     }
     
     function oscillateText() {
@@ -98,27 +106,54 @@ namespace max7219led64 {
     
     //% blockId=drawText block="draw text"
     export function drawText() {
-        let letter = 0;
-        let position = 0;
-        for (let i = 0; i < myText.length; i++) {
-            letter = myText.charCodeAt(i);
-            for (let col = 0; col < 8; col++) {
-                position = i * myCharWidth + col + myTextOffset + myTextAlignmentOffset;
-                if (position >= 0 && position < myNumberOfDevices * 8) {
-                    // setColumn(position, cp437_font[letter][col]);
-                    // 下面的ascii码减去的数字（cp437_font[letter-n]）是cp437_font字库数组前面被注释掉的数据个数
-                    // 因为microbit的可用内存很少，所以无法导入所有的字库，只能挑一些常用的
-                    // 注意，最开头的部分被注释掉了所以计算时要减去这个位移，另外，途中即使不导入字库也要使用空数组来占位，否则根据ascii码无法取到正确的字体数据
-                    setColumn(position, (cp437_font[letter-32][col/4] & 0xff<<((3-(col%4))*8)) >> (3-(col%4))*8 );
+        let letter:number = 0;
+        let col:number = 0;
+        let row:number = 0;
+        let textIdx:number = 0;
+        let colData_32bit = 0;
+        let colData_8bit = 0;
+
+        let rowData_8bit:number = 0;
+
+        //serial.writeLine(myText);
+
+        //clearScreen();
+        clearMap();
+
+        for (textIdx = myShowTextStartIdx; textIdx < (myShowTextStartIdx + myNumberOfDevices + 1); textIdx++) {
+            if (textIdx > myText.length-1) {
+                break;
+            }
+            letter = myText.charCodeAt(textIdx);
+
+            // for (col = 0; col < myCharWidth; col++) {
+            //     colData_32bit = cp437_font[letter-32][col/4];
+            //     colData_8bit = (colData_32bit& (0xff<<((3-col%4)*8))) >> (3-(col%4))*8;
+            //     for (row = 0; row < 8; row++) {
+            //         if (((colData_8bit<<row) & 0x80) == 0x80) {
+            //             turnOnMapNoCommit(7-row, textIdx * myCharWidth + col + myTextOffset);
+            //         } else {
+            //             turnOffMapNoCommit(7-row, textIdx * myCharWidth + col + myTextOffset);
+            //         }
+            //     }
+            // }
+
+            for (row = 0; row < 8; row++) {
+                // 7-bbit 24Cxx address: 1010 A2 A1 A0
+                // 24C256 : A2=0
+                // A1 : Connect to GND : 0
+                // A0 : Connect to GND : 0
+                // So, the address is 1010000 = 0x50 
+                rowData_8bit = read24C256_Int8(0x50, (letter*8)+row);
+                
+                for (col = 0; col < myCharWidth; col++) {
+                    if (((rowData_8bit<<col) & 0x80) == 0x80) {
+                        turnOnMapNoCommit(row, (textIdx-myShowTextStartIdx) * myCharWidth + col + myTextOffset);
+                    } else {
+                        turnOffMapNoCommit(row, (textIdx-myShowTextStartIdx) * myCharWidth + col + myTextOffset);
+                    }
                 }
             }
         }
-    }
-    
-    function setColumn(column:number, value:number) {
-        if (column < 0 || column >= myNumberOfDevices * 8) {
-            return;
-        }
-        setLedData(column, value);
     }
 }

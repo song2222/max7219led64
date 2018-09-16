@@ -13,6 +13,24 @@ enum FlashSpeed {
     slow = 500
 }
 
+enum TestMode {
+
+    //% block=TrunOnAllLed
+    DISPLAY_TEST_MODE_TEST    =	0x01, //测试模式(全亮模式)
+
+    //% block=Normal
+    DISPLAY_TEST_MODE_NORMAL  =	0x00  //正常运行模式
+
+}
+
+enum ShutdownMode {
+    //% block=Shutdown
+    SHUTDOWN_MODE_SHUTDOWN  = 0x00, //关断模式
+
+    //% block=Normal
+    SHUTDOWN_MODE_NORMAL    = 0x01  //正常运行模式
+}
+
 /**
  * A driver for MAX7219 with a 8x8 Martix LEDs in MakeCode.
  */
@@ -20,7 +38,8 @@ enum FlashSpeed {
 namespace max7219led64 {
 
     /** 定义有几块横向级联的8x8点阵屏 最少1块 */
-    let myNumberOfDevices = 1;
+    let myNumberOfDevices:number=4;
+
     export function getMyNumberOfDevices() : number {
         return myNumberOfDevices;
     }
@@ -48,6 +67,8 @@ namespace max7219led64 {
     function commit(){
         pins.digitalWritePin(_LOAD, 1);
         pins.digitalWritePin(_LOAD, 0);
+
+        //basic.pause(500);
     }
 
     // 传输一个8位数
@@ -110,6 +131,11 @@ namespace max7219led64 {
     function sendDisplayDataNoCommit (rowIdx:number, data:number) {
         sendByte(rowIdx + 1); //加1是因为max7219的各行点阵数据的寄存器地址是1-8而不是0-7
         sendByte(data);
+
+        //basic.showIcon(IconNames.Heart);
+        //basic.showNumber(rowIdx);
+        //basic.showIcon(IconNames.Duck);
+        //basic.showNumber(data);
     }
 
     // 译码模式设置
@@ -153,9 +179,8 @@ namespace max7219led64 {
     }
 
     // 关断模式设置
-    const SHUTDOWN_MODE_SHUTDOWN = 0x00; //关断模式
-    const SHUTDOWN_MODE_NORMAL	 = 0x01; //正常运行模式
-    function setShutdownMode(mode : number) {
+    //% blockId=setShutdownMode block="setShutdownMode %mode"
+    export function setShutdownMode(mode : ShutdownMode) {
 
         // 指令寄存器地址设置：0xXC
         // D15-D12:任意
@@ -168,9 +193,8 @@ namespace max7219led64 {
     }
 
     // 测试模式设置
-    const DISPLAY_TEST_MODE_NORMAL  =	0x00; //正常运行模式
-    const DISPLAY_TEST_MODE_TEST    =	0x01; //测试模式(全亮模式)
-    function setDisplayTestMode(mode : number) {
+    //% blockId=setDisplayTestMode block="setDisplayTestMode %mode"
+    export function setDisplayTestMode(mode : TestMode) {
 
         // 指令寄存器地址设置：0xXF
         // D15-D12:任意
@@ -186,9 +210,9 @@ namespace max7219led64 {
      * Init the max7219. 
      */
     //% blockId=init block="Init MAX7219 pin DIN %pinDIO|pin CLK %pinCLK|pin LOAD %pinLOAD|num of matrix? %numberOfDevices|with brightness %intensity"
-    //% pinDIO.defl=DigitalPin.P0
-    //% pinCLK.defl=DigitalPin.P1
-    //% pinLOAD.defl=DigitalPin.P2
+    //% pinDIO.defl=DigitalPin.P14
+    //% pinCLK.defl=DigitalPin.P12
+    //% pinLOAD.defl=DigitalPin.P13
     //% numberOfDevices.defl=1
     //% intensity.min=0 intensity.max=15 intensity.defl=7
     //% weight=100
@@ -205,15 +229,15 @@ namespace max7219led64 {
 
         myNumberOfDevices = numberOfDevices;
 
-        for (let index = 0; index < myNumberOfDevices; index++) {
+        for (let index = 0; index < myNumberOfDevices * 8; index++) {
             _ledDatas.push(0x00);
         }
 
         setDecodeMode(DECODE_MODE_ALL_NOT_USE);			// 数码管7－0全部不采用译码模式
         setIntensity(intensity);						// 亮度(0-15)
         setScanLimit(7);								// 扫描显示位数(0-7)
-        setShutdownMode(SHUTDOWN_MODE_NORMAL);			// 正常运行模式
-        setDisplayTestMode(DISPLAY_TEST_MODE_NORMAL);	// 正常运行模式
+        setDisplayTestMode(TestMode.DISPLAY_TEST_MODE_NORMAL);	// 正常运行模式
+        setShutdownMode(ShutdownMode.SHUTDOWN_MODE_NORMAL);			// 正常运行模式
 
         clearScreen();
     }
@@ -222,7 +246,7 @@ namespace max7219led64 {
         for (let index = 0; index < myNumberOfDevices * 8; index++) {
             _ledDatas[index]=0xff;
         }
-        _refreshAllScreen();
+        refreshAllScreen();
     }
 
     //% blockId=clearScreen block="clear screen"
@@ -231,29 +255,53 @@ namespace max7219led64 {
         for (let index = 0; index < myNumberOfDevices * 8; index++) {
             _ledDatas[index]=0x00;
         }
-        _refreshAllScreen();
+        refreshAllScreen();
     }
+
+    export function clearMap() {
+        for (let index = 0; index < myNumberOfDevices * 8; index++) {
+            _ledDatas[index]=0x00;
+        }
+    }
+
+    export function turnOnMapNoCommit(row:number, col:number) { 
+        // 指定行不能超过8行（index:7）
+        // 指定列不能超过级联后每行最大led个数
+        if (row<8 && row>=0 && col<myNumberOfDevices*8 && col>=0) {
+            // 根据坐标确定要修改数组第几个元素
+            let idx = row*myNumberOfDevices + col/8;
+            // 将指定位置1
+            _ledDatas[idx] = setBitInByte(_ledDatas[idx], 7 - (col%8));
+        }
+    }
+
+    export function turnOffMapNoCommit(row:number, col:number) { 
+        // 指定行不能超过8行（index:7）
+        // 指定列不能超过级联后每行最大led个数
+        if (row<8 && row>=0 && col<myNumberOfDevices*8 && col>=0) {
+            // 根据坐标确定要修改数组第几个元素
+            let idx = row*myNumberOfDevices + col/8;
+            // 将指定位置0
+            _ledDatas[idx] = cleanBitInByte(_ledDatas[idx], 7 - (col%8));
+        }
+}
 
     /**
      * Turn on a led at specific position. 
      */
-    //% blockId=“turnOnLed” block="turn on Led at row:%y|col:%x"
-    //% x.min=0 y.min=0 y.max=7
-    export function turnOnLed(y:number, x:number) { 
+    //% blockId=“turnOnLed” block="turn on Led at row:%row|col:%col"
+    //% col.min=0 row.min=0 row.max=7
+    export function turnOnLed(row:number, col:number) { 
         // 指定行不能超过8行（index:7）
         // 指定列不能超过级联后每行最大led个数
-        if (y<8 && y>=0 && x<myNumberOfDevices*8 && x>=0) {
+        if (row<8 && row>=0 && col<myNumberOfDevices*8 && col>=0) {
             // 根据坐标确定要修改数组第几个元素
-            let idx = y*myNumberOfDevices + x/8;
-
-            //serial.writeValue("y row", y);
-            //serial.writeValue("x col", x);
-
+            let idx = row*myNumberOfDevices + col/8;
             // 将指定位置1
-            _ledDatas[idx] = setBitInByte(_ledDatas[idx], 7 - (x%8));
+            _ledDatas[idx] = setBitInByte(_ledDatas[idx], 7 - (col%8));
 
             // 更新屏幕(y+1是因为max7219更新数据的行号是1-8 而不是0-7)
-            sendDiviceCommit(x/8, y+1, _ledDatas[idx]);
+            sendDiviceCommit(col/8, row+1, _ledDatas[idx]);
         }
     }
 
@@ -261,18 +309,18 @@ namespace max7219led64 {
      * Turn off a led at specific position. 
      */
     //% blockId=“turnOffLed” block="turn off Led at row:%y|col:%x"
-    //% x.min=0 x.max=7 y.min=0 y.max=7
-    export function turnOffLed(y:number, x:number) {
+    //% col.min=0 row.min=0 row.max=7
+    export function turnOffLed(row:number, col:number) {
         // 指定行不能超过8行（index:7）
         // 指定列不能超过级联后每行最大led个数
-        if (y<8 && y>=0 && x<myNumberOfDevices*8 && x>=0) {
+        if (row<8 && row>=0 && col<myNumberOfDevices*8 && col>=0) {
             // 根据坐标确定要修改数组第几个元素
-            let idx = y*myNumberOfDevices + x/8;
+            let idx = row*myNumberOfDevices + col/8;
             // 将指定位置0
-            _ledDatas[idx] = cleanBitInByte(_ledDatas[idx], 7 - (x%8));
+            _ledDatas[idx] = cleanBitInByte(_ledDatas[idx], 7 - (col%8));
 
             // 更新屏幕(y+1是因为max7219更新数据的行号是1-8 而不是0-7)
-            sendDiviceCommit(x/8, y+1, _ledDatas[idx]);
+            sendDiviceCommit(col/8, row+1, _ledDatas[idx]);
         }
     }
 
@@ -290,12 +338,14 @@ namespace max7219led64 {
         }
     }
 
-    function _refreshAllScreen() {
+    export function refreshAllScreen() {
         for (let idx = 0; idx < _ledDatas.length; idx++) {
             sendDisplayDataNoCommit(_getRowNoByArrIdx(idx), _ledDatas[idx]);
             // 所有级联的设备的一整行数据全部传输完毕以后，统一提交一次
             if (_getDevNoByArrIdx(idx) == (myNumberOfDevices-1) ) {
                 commit();
+
+                //basic.showIcon(IconNames.SmallHeart);
             }
         }
     }
