@@ -1,10 +1,9 @@
 namespace max7219led64 {
-    const myCharWidth = 7;
+    const myCharWidth = 8;
 
     let myText:string = "";
-    let myNextText:string = "";
     let myTextOffset:number = 0;
-    let myShowTextStartIdx:number =0;
+    let myRightSideTextIdx:number =0;
     let increment:number = -1;
 
     let myTextAlignment:number = 0;
@@ -49,11 +48,6 @@ namespace max7219led64 {
         
     }
     
-    //% blockId=commit block="commit"
-    export function commit() {
-        refreshAllScreen();
-    }
-    
     //% blockId=setText block="setText %text"
     export function setText(text:string) {
 
@@ -74,12 +68,49 @@ namespace max7219led64 {
         if (myTextOffset <= (-myCharWidth)) {
             myTextOffset=0;
 
-            myShowTextStartIdx++;
-            if (myShowTextStartIdx >= myText.length) {
-                myShowTextStartIdx = 0;
-                myTextOffset = myNumberOfDevices * myCharWidth;
+            myRightSideTextIdx++;
+            if (myRightSideTextIdx >= myText.length) {
+                myRightSideTextIdx = 0;
             }
         }
+
+        // 由于往左移动了一列所以需要取到最右侧新移动进来的一列的数据
+        let row:number;
+        let rowData_8bit:number;
+        let letterAsciiCode:number;
+
+        letterAsciiCode = myText.charCodeAt(myRightSideTextIdx);
+
+        // if (myShowTextStartIdx + myNumberOfDevices > myText.length-1) {
+        //     // 当左移到最后几个字时，重字符串前面开始取
+        //     letterAsciiCode = myText.charCodeAt((myShowTextStartIdx + myNumberOfDevices) % myText.length) ;
+        // } else {
+        //     // 从外接储存芯片取点阵数据(这里使用的点阵字库数据行扫描，每一个字节是一个点阵的一行数据)
+        //     // 如果是列扫描就需要修改相关代码
+        //     letterAsciiCode = myText.charCodeAt(myShowTextStartIdx + myNumberOfDevices);
+        // }
+
+        // 从外接储存芯片取点阵数据
+        let rightSideColData=0x00;
+        for (row = 0; row < 8; row++) {
+            // 7-bbit 24Cxx address: 1010 A2 A1 A0
+            // 24C256 : A2=0
+            // A1 : Connect to GND : 0
+            // A0 : Connect to GND : 0
+            // So, the address is 1010000 = 0x50 
+            rowData_8bit = read24C256_Int8(0x50, (letterAsciiCode*8)+row);
+            
+            // 这里使用的字库的格式是以行为单位的，而左移函数需要的是一列数据，这里要做一个变换
+            if (((rowData_8bit<<(-myTextOffset)) & 0x80) == 0x80) {
+                rightSideColData = setBitInByte(rightSideColData, row);
+            } else {
+                rightSideColData = cleanBitInByte(rightSideColData, row);
+            }
+        }
+
+        // 调用函数，向左移动一位
+        scrollLeftNoCommit(rightSideColData);
+        refreshAllScreen();
     }
     
     function oscillateText() {
@@ -103,14 +134,14 @@ namespace max7219led64 {
         let col:number = 0;
         let row:number = 0;
         let textIdx:number = 0;
-        let colData_32bit = 0;
-        let colData_8bit = 0;
 
         let rowData_8bit:number = 0;
 
+        myRightSideTextIdx = myNumberOfDevices;
+
         clearMap();
 
-        for (textIdx = myShowTextStartIdx; textIdx < (myShowTextStartIdx + myNumberOfDevices + 1); textIdx++) {
+        for (textIdx = 0; textIdx < myNumberOfDevices; textIdx++) {
             if (textIdx > myText.length-1) {
                 break;
             }
@@ -138,12 +169,14 @@ namespace max7219led64 {
                 
                 for (col = 0; col < myCharWidth; col++) {
                     if (((rowData_8bit<<col) & 0x80) == 0x80) {
-                        turnOnMapNoCommit(row, (textIdx-myShowTextStartIdx) * myCharWidth + col + myTextOffset);
+                        turnOnMapNoCommit(row, textIdx * myCharWidth + col + myTextOffset);
                     } else {
-                        turnOffMapNoCommit(row, (textIdx-myShowTextStartIdx) * myCharWidth + col + myTextOffset);
+                        turnOffMapNoCommit(row, textIdx * myCharWidth + col + myTextOffset);
                     }
                 }
             }
         }
+
+        refreshAllScreen();
     }
 }

@@ -405,6 +405,27 @@ namespace max7219led64 {
         return ((0x01 << pos ) | byteData) ^ (0x01 << pos);
     }
 
+    export function scrollLeftNoCommit(rightSideColData:number) {
+
+        // 将每一个数据向左移动1位，空出来的最低位用下一个数据的最高位代替
+        // 注意这样做，虽然最右侧屏幕的最后一列数据会变成原来下一行第一列的数据
+        // 但是先不用管，因为后面会用传入的参数更新掉那一列
+        for (let dataIdx = 0; dataIdx < _ledDatas.length -1 ; dataIdx++) {
+            _ledDatas[dataIdx] = ((_ledDatas[dataIdx] << 1) & 0XFF) | (_ledDatas[dataIdx+1] >> 7);
+        }
+        // 最后一个数据由于没有下一个数据了，所以单独拿出来只左移1位即可。
+        _ledDatas[_ledDatas.length-1] = (_ledDatas[_ledDatas.length-1] << 1) & 0XFF;
+
+        // 用传入的参数更新屏幕上最右侧一列数据
+        for (let row = 0; row < 8; row++) {
+            if (((rightSideColData<<row) & 0x80) == 0x80) {
+                turnOnMapNoCommit(7-row, myNumberOfDevices * 8 - 1);
+            } else {
+                turnOffMapNoCommit(7-row, myNumberOfDevices * 8 - 1);
+            }
+        }
+    }
+
 
     // 仅仅作为测试使用，正式版本不对外公开
     //% blockId=test block="test"
